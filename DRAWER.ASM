@@ -59,9 +59,9 @@ DrawFrame:
     mov si, offset inputeddata
     add si, 0ch
     mov cx, var_msglen
-    shr var_heigth, 3
+    shl var_heigth, 3
     mov bx, var_heigth
-    shr var_heigth, 2
+    shl var_heigth, 2
     add var_heigth, bx
     sub di, var_heigth
     add di, var_width
@@ -201,9 +201,9 @@ Atoi   proc
 
     mov al, ds:[bx]
     sub ax, 30h
-    shr ax, 1
+    shl ax, 1
     mov cx, ax
-    shr ax, 2
+    shl ax, 2
     add ax, cx
     inc bx
 
