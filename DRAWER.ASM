@@ -2,52 +2,75 @@
 
 .code
 org 100h
+
+VIDEOSEG    equ 0b800h
+SCREENWIDTH equ 00a0h
+
 Start:
+    call DrawFrame
+
+mov ax, 4c00h
+int 21h
+
+;======DrawFrame===========
+;Entry: none
+;Exit: none
+;Destroy: none
+;==========================
+DrawFrame:
+
+    push ax bx cx dx di si bp sp ds es ss
+
     xor cx, cx
     call InputData
-    mov al, 4h
-    call InputCX
-    mov ah, cl
 
-    mov bx, 0b800h
+    mov ah, var_Color
+
+    mov bx, VIDEOSEG
     mov es, bx
 
-    ;xor ah, ah
-    ;lea si, clearing
-    ;call ClearScreen
+    xor ah, ah
+    lea si, clearing
+    call ClearScreen
 
-    mov si, offset upline
-    mov di, 00a0h
-    xor al, al
-    call InputCX
+    mov si, offset style
+    mov di, SCREENWIDTH
+    mov cx, var_width
     call DrawLine
 
-    mov al, 2h
-    call InputCX
+    mov cx, var_heigth
 
     midls:
-        mov si, offset midline
+        mov si, offset style
+        add si, 3
         push cx
-        xor al, al
-        call InputCX
-        add di, 00a0h
+        mov cx, var_width
+        add di, SCREENWIDTH
         call DrawLine
         pop cx
         loop midls
 
-    mov si, offset lowline
-    xor al, al
-    call InputCX
-    add di, 00a0h
+    mov si, offset style
+    add si, 3
+    mov cx, var_width
+    add di, SCREENWIDTH
     call DrawLine
     
-    xor al, al
-    dec al
-    call InputCX
+    mov si, offset inputeddata
+    add si, 0ch
+    mov cx, var_msglen
+    shr var_heigth, 3
+    mov bx, var_heigth
+    shr var_heigth, 2
+    add var_heigth, bx
+    sub di, var_heigth
+    add di, var_width
     call DrawMessage
 
-mov ax, 4c00h
-int 21h
+    pop ss es ds sp bp si di dx cx bx ax
+
+ret
+endp
 
 ;=====ClearScreen========
 ;Entry: AH - color
@@ -57,7 +80,7 @@ int 21h
 ;Destroy: DI, AL, CX, SI
 ;========================
 ClearScreen proc
-
+ 
     xor di, di
     lodsb
     mov cx, 0fa0h
@@ -125,7 +148,7 @@ endp
 InputData   proc
 	mov si, 80h
     mov cl, ds:[si]
-    mov bx, offset message
+    mov bx, offset inputeddata
 
     Input:
         mov al, ds:[si]
@@ -135,7 +158,22 @@ InputData   proc
         mov ds:[bx], al
         inc si
         inc bx
+        inc var_msglen
     loop Input
+
+    sub var_msglen, 0ch
+
+    xor ax, ax
+    call Atoi
+    mov var_width, ax
+
+    mov al, 4
+    call Atoi
+    mov var_heigth, ax
+
+    mov al, 8
+    call Atoi
+    mov var_Color, al
 ret
 
 SkipSpace:
@@ -146,30 +184,33 @@ SkipSpace:
 
 endp
 
-;=============InputCX==================
+;=============Atoi==================
 ;Entry: AL - Shift in message
-;Exit: CX
+;Exit: AX
 ;Assumes:
-;Destroy: CX, AL
+;Destroy: AX
 ;========================================
-InputCX   proc
-    push bx
+Atoi   proc
+    push bx cx
 
-    mov bx, offset message
+    mov bx, offset inputeddata
     add bl, al
     inc bx
 
-    mov cl, ds:[bx]
-    sub cx, 30h
-    shr cx, 3
-    add cx, cx
-    add cx, cx
+    xor ax, ax
+
+    mov al, ds:[bx]
+    sub ax, 30h
+    shr ax, 1
+    mov cx, ax
+    shr ax, 2
+    add ax, cx
     inc bx
 
-    add cl, ds:[bx]
-    sub cx, 30h
+    add al, ds:[bx]
+    sub ax, 30h
 
-    pop bx
+    pop cx bx
 ret
 endp
 
@@ -192,11 +233,17 @@ endp
 
 .data
 
+var_msglen  dw 0
+var_width   dw 10
+var_heigth  dw 05
+var_Color   db 05
+
+style   db '123456789'
 upline  db ''
 midline db ''
 lowline db ''
 clearing    db ' '
 
-message	db 100 Dup (?)
+inputeddata	db 100 Dup (?)
 
 end Start
